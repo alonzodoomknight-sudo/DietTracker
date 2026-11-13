@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL }}
+      EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL || secrets.API_BASE_URL }}
       APP_ID: ${{ vars.APP_ID }}
       BUILD_NUMBER: ${{ github.run_number }}
       NODE_ENV: production
@@ -22,8 +22,9 @@ jobs:
       - name: Check the website address
         run: |
           if [ -z "$EXPO_PUBLIC_API_BASE_URL" ]; then
-            echo "::error::Set the variable API_BASE_URL (e.g. https://your-domain.com) in Settings → Secrets and variables → Actions → Variables."
-            exit 1
+            echo "::warning::No website address yet: the APK is built, but it can't connect to the website. When the website is up, add API_BASE_URL (e.g. https://your-domain.com) in Settings → Secrets and variables → Actions → Variables, and run this again."
+          else
+            echo "Website: $EXPO_PUBLIC_API_BASE_URL"
           fi
 
       - uses: actions/setup-node@v4
