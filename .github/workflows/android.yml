@@ -51,11 +51,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # react-dom is installed with the matching version, so npm doesn't pull a newer one that clashes with react.
       - name: Install packages
         working-directory: ${{ env.APP_DIR }}
         run: |
           npm install
-          npm run deps
+          npx expo install react react-dom react-native expo-router expo-constants expo-linking expo-status-bar expo-splash-screen expo-system-ui expo-localization expo-secure-store expo-file-system expo-camera expo-image-picker expo-document-picker expo-media-library expo-notifications expo-print expo-sharing expo-web-browser expo-build-properties react-native-svg react-native-safe-area-context react-native-screens react-native-gesture-handler react-native-reanimated react-native-worklets @react-native-community/datetimepicker
+          npm install --legacy-peer-deps @infinitered/react-native-mlkit-text-recognition react-native-document-scanner-plugin
 
       # Optional: notifications from the website. Add the secret GOOGLE_SERVICES_JSON (the whole google-services.json file).
       - name: Firebase file (optional)
