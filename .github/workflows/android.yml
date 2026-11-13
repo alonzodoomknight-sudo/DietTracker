@@ -1,0 +1,63 @@
+name: Build Android APK
+
+# Runs on every push to main, or by hand: Actions → Build Android APK → Run workflow.
+# The APK appears under the finished run, in "Artifacts".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL }}
+      APP_ID: ${{ vars.APP_ID }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the website address
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_BASE_URL" ]; then
+            echo "::error::Set the variable API_BASE_URL (e.g. https://your-domain.com) in Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install packages
+        run: |
+          npm install
+          npm run deps
+
+      # Optional: notifications from the website. Add the secret GOOGLE_SERVICES_JSON (the whole google-services.json file).
+      - name: Firebase file (optional)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json; echo "Firebase on"; else echo "Firebase off (optional)"; fi
+
+      - name: Create the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build the APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: body-scan-tracker-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
