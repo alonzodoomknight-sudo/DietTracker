@@ -19,6 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The app files can be at the top of the repository or in a folder (e.g. body-scan-tracker-app/).
+      - name: Find the app files
+        run: |
+          if ! find . -maxdepth 4 -name package.json -not -path '*/node_modules/*' | grep -q .; then
+            Z=$(find . -maxdepth 3 -name '*.zip' | head -1)
+            if [ -n "$Z" ]; then echo "Unzipping $Z"; unzip -q -o "$Z" -d .; fi
+          fi
+          P=$(find . -maxdepth 4 -name package.json -not -path '*/node_modules/*' | awk '{ print length, $0 }' | sort -n | head -1 | cut -d' ' -f2-)
+          if [ -z "$P" ]; then
+            echo "::error::No package.json in the repository. Upload the files that are inside body-scan-tracker-app (package.json, app.config.ts, app, src …)."
+            exit 1
+          fi
+          echo "App folder: $(dirname "$P")"
+          echo "APP_DIR=$(dirname "$P")" >> "$GITHUB_ENV"
+
       - name: Check the website address
         run: |
           if [ -z "$EXPO_PUBLIC_API_BASE_URL" ]; then
@@ -37,22 +52,25 @@ jobs:
           java-version: 17
 
       - name: Install packages
+        working-directory: ${{ env.APP_DIR }}
         run: |
           npm install
           npm run deps
 
       # Optional: notifications from the website. Add the secret GOOGLE_SERVICES_JSON (the whole google-services.json file).
       - name: Firebase file (optional)
+        working-directory: ${{ env.APP_DIR }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json; echo "Firebase on"; else echo "Firebase off (optional)"; fi
 
       - name: Create the Android project
+        working-directory: ${{ env.APP_DIR }}
         run: npx expo prebuild --platform android --no-install --clean
 
       - name: Build the APK
-        working-directory: android
+        working-directory: ${{ env.APP_DIR }}/android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
@@ -60,5 +78,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: body-scan-tracker-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
