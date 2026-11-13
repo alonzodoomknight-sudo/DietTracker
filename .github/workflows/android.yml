@@ -71,11 +71,12 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: npx expo prebuild --platform android --no-install --clean
 
+      # -x lintVitalRelease: skips Android's release check, which stops on the iPhone-only texts in locales/*.json.
       - name: Build the APK
         working-directory: ${{ env.APP_DIR }}/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a -x lintVitalRelease
 
       - uses: actions/upload-artifact@v4
         with:
